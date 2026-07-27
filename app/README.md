@@ -22,13 +22,20 @@ You don't need to be a developer to get these — each is a signup form on a
 website, not a coding task.
 
 1. **A Postgres database.** Easiest free option: create a project at
-   [supabase.com](https://supabase.com) or [neon.tech](https://neon.tech) and
-   copy the connection string into `DATABASE_URL`. On Supabase, copy *both*
-   connection strings from Project Settings -> Database -> Connection
-   string: the "Transaction pooler" one (port 6543) into `DATABASE_URL`, and
-   the "Direct connection" one (port 5432) into `DIRECT_URL` — Prisma needs
-   the direct one for `db push`/`migrate` since the pooler doesn't support
-   the prepared statements the migration engine uses.
+   [supabase.com](https://supabase.com) or [neon.tech](https://neon.tech).
+   On Supabase, get two strings from Project Settings -> Database ->
+   Connection string:
+   - `DATABASE_URL`: the "Shared pooler" string in **Transaction** mode
+     (port 6543).
+   - `DIRECT_URL` (needed for `db push`/`migrate`, since the transaction
+     pooler doesn't support the prepared statements the migration engine
+     uses):
+     - **Paid tier with IPv4:** the true "Direct connection" string (port
+       5432).
+     - **Free tier:** true Direct connection is IPv6-only and usually
+       won't connect from a normal network — use the "Shared pooler"
+       string in **Session** mode instead (also port 5432, but on the
+       pooler host, not `db.[project-id].supabase.co`).
 2. **An Anthropic API key.** Create one at
    [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys)
    and put it in `ANTHROPIC_API_KEY`. This is what makes the "Run agent"

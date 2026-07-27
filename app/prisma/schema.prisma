@@ -13,9 +13,12 @@ datasource db {
   // Pooled connection (Supabase transaction pooler, port 6543) — used by the
   // running app for normal queries.
   url       = env("DATABASE_URL")
-  // Direct connection (port 5432) — required for `prisma db push` /
-  // `migrate`, since Supabase's pooler doesn't support the prepared
-  // statements the migration engine uses.
+  // Required for `prisma db push` / `migrate`. On a Supabase paid tier with
+  // IPv4 access this is the true Direct connection (port 5432). On free
+  // tier, true Direct is IPv6-only, so use the Shared pooler in *session*
+  // mode (also port 5432, but on the pooler host) instead — session mode
+  // supports the prepared statements the migration engine needs, unlike
+  // transaction mode.
   directUrl = env("DIRECT_URL")
 }
 
