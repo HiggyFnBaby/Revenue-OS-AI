@@ -12,6 +12,7 @@ CURRENT PHASE: 3_DECISION_ENGINE (complete) | RISK: LOW | DAYS TO EXPIRATION: n/
 VERIFIED: base/table/field inventory, record counts, formula/rollup inventory, cross-base link mechanism (see below)
 ASSUMPTIONS: no Airtable automations/extensions/webhooks in active use; no recurring-cost pressure driving this (see Phase 3)
 OPEN BLOCKERS: none for Gate A/B; Gate C mapping approval still to come in Phase 4
+BACKUP PLAN: local, gitignored, checksummed export under migration-cases/backups/ — indefinite retention (approved)
 APPROVAL REQUIRED: Gate B — strategy approval (MIGRATE) before Phase 4 starts
 NEXT BEST ACTION: owner approves MIGRATE at Gate B, then Phase 4 (backup export + field mapping proposal) begins
 ROLLBACK READY: n/a — no writes have occurred yet
@@ -29,10 +30,15 @@ Resolved by owner on 2026-08-12:
   - "TheRealKingOfAI — Content OPS" — `apprfcwDHq7ElBQ3S`
 - **Urgency:** no hard deadline (not trial-driven); proceed at a normal pace through the remaining gates
 
-Still open, but non-blocking for Gate A/B (needed before Gate C mapping
-approval and Phase 8 cutover):
+**Backup destination and retention policy** — resolved by owner on
+2026-08-12:
 
-- Backup destination and retention policy for the exported Airtable data
+- Destination: local filesystem, under `migration-cases/backups/<case>/<date>/`, one JSON file per table plus a `manifest.json` (record counts, export timestamp) and a `CHECKSUMS.sha256`. Gitignored (see `migration-cases/.gitignore`) — never committed, since the export contains real contact PII (names, emails, phone numbers).
+- Retention: indefinite for the pre-migration backup (data volume is trivial — a few KB). A second checksummed snapshot will be taken immediately before Phase 8 cutover, so a last-known-good copy survives even after Airtable access is eventually retired.
+
+Still open, but non-blocking for Gate A/B (needed before Phase 8
+cutover):
+
 - Confirmation that no Airtable automations/extensions/webhooks are in
   active use (assumed absent below — see Phase 2)
 
