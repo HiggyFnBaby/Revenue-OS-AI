@@ -2,20 +2,20 @@
 
 Tracked per [`continuity-bridge/README.md`](../continuity-bridge/README.md).
 Nothing in this case has executed a write against Airtable or any
-production database — Phases 1–3 (intake, dependency audit, decision
-scoring) only. Phase 4 (backup and mapping) has not started.
+production database — Phases 1–4 (intake, dependency audit, decision
+scoring, backup + mapping) only. No staging or production import has run.
 
 ```
 CASE: revenue-os-crm-airtable | TENANT: derrick | MODE: SINGLE_CLIENT
-RECOMMENDATION: MIGRATE
-CURRENT PHASE: 3_DECISION_ENGINE (complete) | RISK: LOW | DAYS TO EXPIRATION: n/a (no deadline)
-VERIFIED: base/table/field inventory, record counts, formula/rollup inventory, cross-base link mechanism (see below)
-ASSUMPTIONS: no Airtable automations/extensions/webhooks in active use; no recurring-cost pressure driving this (see Phase 3)
-OPEN BLOCKERS: none for Gate A/B; Gate C mapping approval still to come in Phase 4
-BACKUP PLAN: local, gitignored, checksummed export under migration-cases/backups/ — indefinite retention (approved)
-APPROVAL REQUIRED: Gate B — strategy approval (MIGRATE) before Phase 4 starts
-NEXT BEST ACTION: owner approves MIGRATE at Gate B, then Phase 4 (backup export + field mapping proposal) begins
-ROLLBACK READY: n/a — no writes have occurred yet
+RECOMMENDATION: MIGRATE (approved at Gate B)
+CURRENT PHASE: 4_BACKUP_AND_MAPPING (complete) | RISK: LOW | DAYS TO EXPIRATION: n/a (no deadline)
+VERIFIED: base/table/field inventory, record counts, formula/rollup inventory, full data export + checksums, cross-base link resolved by exact title match (see mappings doc)
+ASSUMPTIONS: no Airtable automations/extensions/webhooks in active use (see Phase 2)
+OPEN BLOCKERS: none for Gates A/B/C readiness; Gate C itself still needs owner sign-off
+BACKUP PLAN: local, gitignored, checksummed export under migration-cases/backups/revenue-os-crm-airtable/2026-08-12/ — indefinite retention (approved, executed)
+APPROVAL REQUIRED: Gate C — mapping approval (see revenue-os-crm-airtable-mappings.md) before Phase 5 (staging import) starts
+NEXT BEST ACTION: owner reviews the mapping proposal and approves/adjusts at Gate C
+ROLLBACK READY: yes — full checksummed source export exists; nothing written to any database yet, so there is nothing to roll back
 ```
 
 ## Gate A — Scope confirmation: **APPROVED**
@@ -127,9 +127,36 @@ one-time mapping problem, not a reason to keep Airtable running.
 identified critical workflow that needs Airtable to keep running in
 parallel once staging validation passes.
 
-## Gate B — Strategy approval
+## Gate B — Strategy approval: **APPROVED**
 
-**Status: PENDING.** Recommended strategy: `MIGRATE`. Awaiting owner
-approval before Phase 4 (backup export, field-mapping proposal, primary-key
-assignment, and a concrete resolution plan for the soft title-matched
-cross-base link) begins.
+Owner approved `MIGRATE` on 2026-08-12.
+
+## Phase 4 — Backup and mapping: **complete**
+
+- **Export:** all 9 tables (both bases) exported to
+  `migration-cases/backups/revenue-os-crm-airtable/2026-08-12/` — one JSON
+  file per table, `manifest.json` (record counts + SHA-256 per file), and
+  `CHECKSUMS.sha256`. Gitignored, per the approved backup plan. 54 records
+  total, byte-for-byte from the live Airtable data at export time.
+- **Target schema:** proposed at
+  [`continuity-bridge/target-schemas/revenue-os-crm.sql`](../continuity-bridge/target-schemas/revenue-os-crm.sql) —
+  primary keys are the original Airtable record IDs; every rollup/formula
+  field becomes a SQL view instead of a stored column (so it can't drift);
+  every Airtable multi-link field becomes a proper join table.
+- **Field mappings + cross-base link resolution:** see
+  [`revenue-os-crm-airtable-mappings.md`](./revenue-os-crm-airtable-mappings.md).
+  The Phase 1 open question about the soft CRM↔Content-OPS link is now
+  **resolved**: every populated title matches exactly across both bases,
+  with concrete Airtable-record-ID-to-ID mappings written out. One true
+  orphan found (`recbI4pGQJYcEcKDs` — a Content Calendar row with no title
+  and no other data) — it will import with a `NULL` link rather than being
+  silently dropped.
+
+## Gate C — Mapping approval
+
+**Status: PENDING.** Review
+[`revenue-os-crm-airtable-mappings.md`](./revenue-os-crm-airtable-mappings.md)
+and the schema above. Once approved, Phase 5 (staging migration: create a
+local SQLite database from the schema, import the exported data, run
+validation checks) can begin — still no changes to Airtable itself at that
+point, since staging is a separate, isolated database.
