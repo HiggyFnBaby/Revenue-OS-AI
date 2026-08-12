@@ -1,55 +1,47 @@
 # Migration case: Revenue OS CRM (Airtable)
 
 Tracked per [`continuity-bridge/README.md`](../continuity-bridge/README.md).
-This file is the human-readable case record; nothing here has executed a
-write against Airtable or any production database — Phase 1 (intake) and
-the read-only portion of Phase 2 (dependency audit) only.
+Nothing in this case has executed a write against Airtable or any
+production database — Phases 1–3 (intake, dependency audit, decision
+scoring) only. Phase 4 (backup and mapping) has not started.
 
 ```
-CASE: revenue-os-crm-airtable | TENANT: (unconfirmed — see below)
-RECOMMENDATION: not yet scored — Phase 3 blocked on Gate A
-CURRENT PHASE: 1_INTAKE / 2_DEPENDENCY_AUDIT (partial) | RISK: UNKNOWN | DAYS TO EXPIRATION: unknown
-VERIFIED: base inventory, field/type map, record counts (see below)
-ASSUMPTIONS: none stated as fact — all open items listed as blockers
-OPEN BLOCKERS: 8 required intake fields unconfirmed (see below)
-APPROVAL REQUIRED: Gate A — scope confirmation
-NEXT BEST ACTION: owner answers the open intake questions below
-ROLLBACK READY: n/a — no writes have occurred
+CASE: revenue-os-crm-airtable | TENANT: derrick | MODE: SINGLE_CLIENT
+RECOMMENDATION: MIGRATE
+CURRENT PHASE: 3_DECISION_ENGINE (complete) | RISK: LOW | DAYS TO EXPIRATION: n/a (no deadline)
+VERIFIED: base/table/field inventory, record counts, formula/rollup inventory, cross-base link mechanism (see below)
+ASSUMPTIONS: no Airtable automations/extensions/webhooks in active use; no recurring-cost pressure driving this (see Phase 3)
+OPEN BLOCKERS: none for Gate A/B; Gate C mapping approval still to come in Phase 4
+APPROVAL REQUIRED: Gate B — strategy approval (MIGRATE) before Phase 4 starts
+NEXT BEST ACTION: owner approves MIGRATE at Gate B, then Phase 4 (backup export + field mapping proposal) begins
+ROLLBACK READY: n/a — no writes have occurred yet
 ```
+
+## Gate A — Scope confirmation: **APPROVED**
+
+Resolved by owner on 2026-08-12:
+
+- **Tenant / owner:** Derrick (single client — this repo's owner)
+- **Service mode:** `SINGLE_CLIENT`
+- **Target backend:** new local SQLite database (per ContinuityBridge's own default guidance for one active writer)
+- **Scope:** both Airtable bases included —
+  - "Revenue OS CRM" — `apphhT2YHy5AupUeB`
+  - "TheRealKingOfAI — Content OPS" — `apprfcwDHq7ElBQ3S`
+- **Urgency:** no hard deadline (not trial-driven); proceed at a normal pace through the remaining gates
+
+Still open, but non-blocking for Gate A/B (needed before Gate C mapping
+approval and Phase 8 cutover):
+
+- Backup destination and retention policy for the exported Airtable data
+- Confirmation that no Airtable automations/extensions/webhooks are in
+  active use (assumed absent below — see Phase 2)
 
 ## Source
 
-- **Platform:** Airtable
-- **Base:** "Revenue OS CRM" — `apphhT2YHy5AupUeB`
-- **Access verified:** yes, via connected Airtable account, `create`-level permission
-- **Related base seen in the same account** (not yet audited): "TheRealKingOfAI — Content OPS" — `apprfcwDHq7ElBQ3S`. The `Content` table's description in this base ("linking the Content OPS pipeline to Revenue OS attribution") implies a cross-base dependency — flagged, not yet inventoried.
+### Base 1: Revenue OS CRM — `apphhT2YHy5AupUeB`
 
-## Phase 1 — Intake: confirmed vs. missing
-
-Confirmed by direct inspection:
-
-| Field | Value |
-|---|---|
-| bases/tables/fields | 1 base, 6 tables (below) |
-| record counts | 38 total across all 6 tables (below) |
-| attachments | none — no `multipleAttachments` field type present in any table |
-| formulas/rollups | 6 present (below) — all straightforward, no nested cross-table chains observed |
-| linked records | present in every table — see dependency audit |
-
-**Missing — required before Gate A can close** (this agent cannot infer these):
-
-1. `tenant_id` / organization name and **owner** for this case
-2. **Service mode** — `SINGLE_CLIENT` or `TEAM`? (determines concurrency requirements and whether SQLite is viable as the target — see deployment guidance)
-3. Airtable **trial expiration / downgrade date**, if any (drives urgency)
-4. **Active users and permission levels** on this base (not visible from schema/record inspection)
-5. **Critical workflows and acceptable downtime**
-6. **Target backend decision** — this repo already has a running Postgres + Prisma CRM at `app/` (see below for why the two don't currently overlap) — should this migrate into a *new* SQLite/Postgres store dedicated to this data, or be reconciled with `app/prisma/schema.prisma`?
-7. **Backup destination and retention policy**
-8. Whether the flagged "TheRealKingOfAI — Content OPS" base should be in scope for this case or tracked separately
-
-## Phase 2 — Dependency audit (read-only, so far)
-
-### Tables, fields, and record counts
+6 tables, 38 records total, 0 attachments, 6 formula/rollup fields, dense
+cross-table linking (every table links to at least two others):
 
 | Table | Records | Fields | Linked-record fields | Formula/rollup fields |
 |---|---|---|---|---|
@@ -60,45 +52,78 @@ Confirmed by direct inspection:
 | Activities | 10 | 8 | Contact, Deal | — |
 | Content | 5 | 15 | Promotes Products, Attributed Deals, Leads Generated | Influenced Revenue (rollup) |
 
-Total: 38 records, 0 attachments, 6 computed fields, dense cross-table
-linking (every table links to at least two others).
+### Base 2: TheRealKingOfAI — Content OPS — `apprfcwDHq7ElBQ3S`
 
-### Criticality / replacement-effort assessment (preliminary — not yet owner-reviewed)
+3 tables, 16 records total, 0 attachments, 0 formula/rollup fields, **no
+Airtable-level linked-record fields at all**:
+
+| Table | Records | Fields | Notes |
+|---|---|---|---|
+| Content Calendar | 6 | 9 | Production pipeline; `Working Title` is plain text |
+| Performance | 1 | 8 | Metrics vs. 2026 benchmarks; `Title` is plain text |
+| Shorts | 9 | 8 | `Parent Video` is plain text, not a link field |
+
+**Key finding:** the "cross-base dependency" flagged at Phase 1 is **not**
+a real Airtable relational link. The CRM base's `Content` table and this
+base's `Content Calendar`/`Performance` tables are connected only by
+matching title strings by eye/convention (e.g. "Stop Prompting Harder"
+appears as a record in both). There is no enforced referential integrity
+today — titles could already have silently drifted. Treat this as a
+**data-matching risk to resolve during Phase 4 mapping** (fuzzy-match by
+title, manually confirm each pair, then assign a stable foreign key) —
+not as a schema dependency to preserve mechanically.
+
+Combined scope: **9 tables, 54 records, 0 attachments** across both bases.
+
+## Phase 2 — Dependency audit
 
 | Dependency | Criticality | Replacement effort | Downgrade impact | Evidence |
 |---|---|---|---|---|
-| Linked records (all tables) | HIGH | NATIVE_SQL (foreign keys) | DEGRADED if links break | schema inspection |
-| Rollup fields (Lifetime Value, Open Pipeline Value, Revenue Generated, Influenced Revenue) | MEDIUM | NATIVE_SQL (SQL views/aggregates) | DEGRADED — values would stop updating live | schema inspection |
+| Linked records within Revenue OS CRM (all tables) | HIGH | NATIVE_SQL (foreign keys) | DEGRADED if links break | schema inspection |
+| Rollup fields (Lifetime Value, Open Pipeline Value, Revenue Generated, Influenced Revenue) | MEDIUM | NATIVE_SQL (SQL views/aggregates) | DEGRADED — would stop updating live | schema inspection |
 | Formula fields (Weighted Value, Days in Pipeline) | LOW | NATIVE_SQL (generated columns) | DEGRADED, easily reproduced | schema inspection |
-| Single/multi-select fields (Stage, Lifecycle Stage, Payment Status, etc.) | LOW | NATIVE_SQL (enums/lookup tables) | NONE if enumerated correctly | schema inspection |
-| Cross-base link to "Content OPS" base | UNKNOWN | UNRESOLVED | UNKNOWN | not yet audited — needs Gate A scope decision |
-| Views, forms, interfaces, automations, webhooks | UNKNOWN | UNRESOLVED | UNKNOWN | not inspected — Airtable MCP access used here only covers table/record data, not automations/interfaces; would need direct Airtable UI/API review |
-| Active users / permissions | UNKNOWN | UNRESOLVED | UNKNOWN | not visible via available tooling |
+| Single/multi-select fields (Stage, Lifecycle Stage, Payment Status, Lane, Status, etc.) | LOW | NATIVE_SQL (enums/lookup tables) | NONE if enumerated correctly | schema inspection |
+| Soft title-matched link between CRM `Content` and Content OPS `Content Calendar`/`Performance` | MEDIUM | SCRIPT (fuzzy match + manual confirm during Phase 4) | DEGRADED — matches could be wrong today, not just after migration | schema inspection, see finding above |
+| Checkbox-based multi-platform tracking (Shorts: YouTube/TikTok/IG Reels) | LOW | NATIVE_SQL (boolean columns) | NONE | schema inspection |
+| Views, forms, interfaces, automations, webhooks | UNKNOWN, **assumed NONE/LOW** | UNRESOLVED if any exist | UNKNOWN | not inspected — table/record-level Airtable access doesn't cover automations/interfaces; assumption to verify before Phase 8 cutover |
+| Active users / permissions | N/A | — | — | resolved by Gate A: SINGLE_CLIENT, one user (Derrick) |
 
 ### Relationship to this repo's existing CRM
 
-`app/prisma/schema.prisma` already implements a Postgres-backed CRM
+`app/prisma/schema.prisma` implements an unrelated Postgres-backed CRM
 (`Workspace`, `User`, `Lead` moving through `SIGNAL → OFFER → ANGLE →
-CONVERSATION → WON/LOST`). That model does **not** structurally match this
-Airtable base — the Airtable base tracks a fuller sales/commerce flow
-(`Contacts`, `Deals`, `Products` inventory, `Orders`, `Activities`,
-marketing-attribution `Content`) with no equivalent tables in `app/`
-today. Treat these as two distinct systems until an owner decides
-otherwise; do not assume they should merge.
+CONVERSATION → WON/LOST`). Gate A resolved this: the migrated data goes to
+a **new, separate SQLite database**, not into `app/`'s schema. The two
+systems stay distinct.
 
 ## Phase 3 — Decision engine
 
-**Blocked.** Scoring requires answers to the missing intake fields above,
-in particular service mode (factor: concurrent access complexity),
-migration time available, and data ownership/privacy requirement — none of
-which this agent can respond to on the source data alone.
+| Factor | Weight | Score (1–5) | Rationale |
+|---|---|---|---|
+| Non-technical multi-user UI dependency | 20 | 1 | Single technical owner (Derrick), no non-technical users depend on Airtable's grid UI |
+| Native automation and extension dependency | 15 | 1 | No automations/extensions observed in the data; **assumption**, not directly verified — flagged above |
+| Migration time available | 15 | 5 | No deadline; can proceed carefully through every gate |
+| Data ownership/privacy requirement | 15 | 5 | Owner explicitly chose local SQLite over cloud alternatives at Gate A |
+| Recurring cost pressure | 10 | 3 | Not stated either way; **assumption** — treated as neutral, not a driver |
+| Internal technical capacity | 10 | 5 | Repo already runs Next.js/Prisma/Postgres/Docker — ample capacity to own a SQLite store |
+| Concurrent access and permissions complexity | 10 | 1 | Single writer, no permission tiers — SQLite is directly viable per deployment guidance |
+| Offline/local operation requirement | 5 | 4 | Implied by the local-SQLite choice at Gate A |
 
-## Gate A — Scope confirmation
+Weighted read: every high-weight factor (non-technical UI dependency,
+automation dependency, concurrency complexity) that would normally argue
+for staying on Airtable scores **low** here, while migration-time,
+ownership, and technical-capacity — which argue for moving — all score
+**high**. The dataset itself is small (54 records, 0 attachments) and the
+only real complication (the soft title-matched cross-base link) is a
+one-time mapping problem, not a reason to keep Airtable running.
 
-**Status: PENDING.** Recommend the owner confirm:
+**Recommendation: MIGRATE.** Not `HYBRID_TRANSITION` — there's no
+identified critical workflow that needs Airtable to keep running in
+parallel once staging validation passes.
 
-- Which base(s) are in scope (just "Revenue OS CRM", or also "Content OPS")
-- Service mode
-- Target backend direction (new dedicated store vs. reconciling with `app/`)
+## Gate B — Strategy approval
 
-No further phase work should proceed until Gate A closes.
+**Status: PENDING.** Recommended strategy: `MIGRATE`. Awaiting owner
+approval before Phase 4 (backup export, field-mapping proposal, primary-key
+assignment, and a concrete resolution plan for the soft title-matched
+cross-base link) begins.
