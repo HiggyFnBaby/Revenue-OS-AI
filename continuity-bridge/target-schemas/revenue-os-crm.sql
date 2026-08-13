@@ -192,16 +192,25 @@ CREATE TABLE shorts (
 
 -- ── Computed views, replacing Airtable rollup/formula fields ─────────
 
+-- NOT filtered by payment_status: verified against source data that the
+-- original Airtable rollup sums ALL linked orders regardless of status
+-- (Marcus Bell's Lifetime Value of 426 includes a Pending order's amount
+-- alongside a Paid one - confirmed while validating this proposal).
 CREATE VIEW contact_lifetime_value AS
 SELECT c.id AS contact_id, COALESCE(SUM(o.amount), 0) AS lifetime_value
 FROM contacts c
-LEFT JOIN orders o ON o.customer_id = c.id AND o.payment_status = 'Paid'
+LEFT JOIN orders o ON o.customer_id = c.id
 GROUP BY c.id;
 
+-- NOT filtered by deal stage, despite the "Open" in the name: verified
+-- against source data that every contact's value equals the sum of ALL
+-- their linked deals, including Won ones (e.g. Grace Whitfield's Open
+-- Pipeline Value of 5000 comes entirely from her one Won deal). Field
+-- name is misleading but this replicates Airtable's actual behavior.
 CREATE VIEW contact_open_pipeline_value AS
 SELECT c.id AS contact_id, COALESCE(SUM(d.amount), 0) AS open_pipeline_value
 FROM contacts c
-LEFT JOIN deals d ON d.contact_id = c.id AND d.stage NOT IN ('Won', 'Lost')
+LEFT JOIN deals d ON d.contact_id = c.id
 GROUP BY c.id;
 
 CREATE VIEW deal_weighted_value AS
@@ -218,18 +227,23 @@ FROM products p
 LEFT JOIN order_products op ON op.product_id = p.id
 GROUP BY p.id;
 
+-- NOT filtered by payment_status: verified against source data (King Of
+-- AI course's Revenue Generated of 297 comes from a Pending order).
 CREATE VIEW product_revenue_generated AS
 SELECT p.id AS product_id, COALESCE(SUM(o.amount), 0) AS revenue_generated
 FROM products p
 LEFT JOIN order_products op ON op.product_id = p.id
-LEFT JOIN orders o ON o.id = op.order_id AND o.payment_status = 'Paid'
+LEFT JOIN orders o ON o.id = op.order_id
 GROUP BY p.id;
 
+-- NOT filtered by deal stage: verified against source data ("Stop
+-- Prompting Harder"'s Influenced Revenue of 297 comes from a deal still
+-- in "Proposal Sent", not Won).
 CREATE VIEW content_influenced_revenue AS
 SELECT c.id AS content_id, COALESCE(SUM(d.amount), 0) AS influenced_revenue
 FROM content c
 LEFT JOIN content_deals cd ON cd.content_id = c.id
-LEFT JOIN deals d ON d.id = cd.deal_id AND d.stage = 'Won'
+LEFT JOIN deals d ON d.id = cd.deal_id
 GROUP BY c.id;
 
 CREATE INDEX idx_deals_contact ON deals(contact_id);
