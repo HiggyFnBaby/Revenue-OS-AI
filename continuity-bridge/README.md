@@ -11,7 +11,9 @@ tool-loadable entry point.
 
 Live migration cases run against this system live under
 [`migration-cases/`](../migration-cases/) at the repo root, one file per
-tenant/base being evaluated.
+tenant/base being evaluated. See [`roadmap.md`](./roadmap.md) for a
+narrative, five-step walkthrough of the same process for anyone who wants
+the high-level shape before reading the full phase/gate detail below.
 
 ## Purpose
 
