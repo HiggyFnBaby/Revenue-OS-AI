@@ -2,3 +2,8 @@
 # phone numbers) - never commit them. See revenue-os-crm-airtable.md's
 # backup destination/retention decision.
 backups/
+
+# Same reasoning applies to the actual staging/target SQLite databases
+# built from those backups - real contact PII, never committed. Rebuild
+# with continuity-bridge/scripts/build_staging_db.py, which IS committed.
+databases/
