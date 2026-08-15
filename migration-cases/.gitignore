@@ -1,0 +1,4 @@
+# Raw Airtable export backups contain real contact PII (names, emails,
+# phone numbers) - never commit them. See revenue-os-crm-airtable.md's
+# backup destination/retention decision.
+backups/
