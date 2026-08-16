@@ -28,6 +28,11 @@ services:
       - NC_AUTH_JWT_SECRET=${NC_AUTH_JWT_SECRET}
     volumes:
       - nocodb_app_data:/usr/app/data/
+      # Bind-mounts migration-cases/databases/ (gitignored - real contact
+      # PII) so its SQLite databases can be added as NocoDB data sources.
+      # Read-write: NocoDB edits the file directly when used as an
+      # external source, it doesn't import/copy it.
+      - ../migration-cases/databases:/data/migration-cases
     depends_on:
       nocodb-db:
         condition: service_healthy
