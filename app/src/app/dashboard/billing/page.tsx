@@ -10,8 +10,9 @@ export const dynamic = "force-dynamic";
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: { expired?: string };
+  searchParams: Promise<{ expired?: string }>;
 }) {
+  const { expired } = await searchParams;
   const session = await getServerSession(authOptions);
   const workspaceId = session!.user.workspaceId;
 
@@ -22,7 +23,7 @@ export default async function BillingPage({
     <div className="max-w-lg">
       <h1 className="mb-4 text-xl font-bold">Billing</h1>
 
-      {searchParams.expired && !active && (
+      {expired && !active && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           Your trial has ended, so the rest of the app is locked until you upgrade.
         </div>
