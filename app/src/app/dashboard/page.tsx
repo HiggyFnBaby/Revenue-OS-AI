@@ -27,7 +27,7 @@ export default async function PipelinePage() {
       <h1 className="mb-1 text-xl font-bold">Pipeline</h1>
       <p className="mb-6 text-sm text-slate-600">
         Every lead moves left to right: Signal &rarr; Offer &rarr; Angle &rarr; Conversation &rarr; Won/Lost.
-        Moving a lead's stage automatically logs the change and creates the next action as a task.
+        Moving a lead&apos;s stage automatically logs the change and creates the next action as a task.
       </p>
       <PipelineBoard initialLeads={leads} />
     </div>

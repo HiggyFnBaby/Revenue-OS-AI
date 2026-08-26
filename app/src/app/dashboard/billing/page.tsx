@@ -30,7 +30,7 @@ export default async function BillingPage({
 
       {!isPaid && active && (
         <p className="mb-4 text-sm text-slate-600">
-          You're on the free trial — <span className="font-semibold">{trialDaysRemaining} day{trialDaysRemaining === 1 ? "" : "s"} left</span>.
+          You&apos;re on the free trial — <span className="font-semibold">{trialDaysRemaining} day{trialDaysRemaining === 1 ? "" : "s"} left</span>.
           No credit card is needed until you decide to upgrade.
         </p>
       )}
