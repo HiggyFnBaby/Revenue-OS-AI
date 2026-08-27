@@ -8,7 +8,8 @@ import { AgentRunPanel } from "@/components/AgentRunPanel";
 
 export const dynamic = "force-dynamic";
 
-export default async function LeadDetailPage({ params }: { params: { id: string } }) {
+export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
   const workspaceId = session!.user.workspaceId;
 
@@ -16,7 +17,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   if (!access.active) redirect("/dashboard/billing?expired=1");
 
   const lead = await prisma.lead.findFirst({
-    where: { id: params.id, workspaceId },
+    where: { id, workspaceId },
     include: {
       agentRuns: { orderBy: { createdAt: "asc" } },
       tasks: { orderBy: { createdAt: "desc" } },

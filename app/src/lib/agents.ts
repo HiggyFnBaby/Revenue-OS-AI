@@ -1,15 +1,21 @@
 import { AgentName, PipelineStage } from "@prisma/client";
-import fs from "node:fs";
-import path from "node:path";
-import matter from "gray-matter";
+import { AGENT_DEFINITIONS } from "@/lib/agentDefinitions.generated";
 
-// This app's agents are not re-implemented here — they're read directly from
+// This app's agents are not re-implemented here — they come from
 // ../../.claude/agents/*.md, the same real Claude Code subagent definitions
 // from the planning phase. That's the point: the CRM doesn't have its own
 // separate copy of "what offer-architect does" that can drift out of sync.
-const AGENTS_DIR = path.join(process.cwd(), "..", ".claude", "agents");
+//
+// Those .md files sit outside the Next.js app root, so they can't be read
+// with fs at runtime — Next's build tracing doesn't bundle them and the
+// deployed app has no parent .claude/ directory to read from. Instead
+// scripts/sync-agent-definitions.mjs inlines them into
+// agentDefinitions.generated.ts at build time (`npm run sync:agents`, wired
+// into prebuild), which keeps the .md files as the single source of truth
+// while making the prompts survive deployment. CI runs the script with
+// --check so a .md edit that wasn't re-synced fails the build.
 
-const AGENT_FILES: Record<AgentName, string> = {
+export const AGENT_FILES: Record<AgentName, string> = {
   MARKET_SIGNAL_RESEARCHER: "market-signal-researcher.md",
   OFFER_ARCHITECT: "offer-architect.md",
   CONTENT_ANGLE_STRATEGIST: "content-angle-strategist.md",
@@ -32,13 +38,17 @@ export interface AgentDefinition {
 }
 
 export function loadAgentDefinition(agent: AgentName): AgentDefinition {
-  const filePath = path.join(AGENTS_DIR, AGENT_FILES[agent]);
-  const raw = fs.readFileSync(filePath, "utf-8");
-  const { data, content } = matter(raw);
+  const definition = AGENT_DEFINITIONS[agent];
+  if (!definition) {
+    throw new Error(
+      `No bundled definition for agent ${agent}. Run \`npm run sync:agents\` ` +
+        `to regenerate it from .claude/agents/${AGENT_FILES[agent]}.`
+    );
+  }
 
   return {
     name: agent,
-    description: data.description ?? "",
-    systemPrompt: content.trim(),
+    description: definition.description,
+    systemPrompt: definition.systemPrompt,
   };
 }
