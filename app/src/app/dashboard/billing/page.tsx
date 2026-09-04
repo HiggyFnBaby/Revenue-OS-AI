@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireWorkspaceIdOrRedirect } from "@/lib/currentWorkspace";
 import { getWorkspaceAccess } from "@/lib/access";
 import { UpgradeButton } from "@/components/UpgradeButton";
+import { ManageBillingButton } from "@/components/ManageBillingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,14 @@ export default async function BillingPage({
   searchParams: Promise<{ expired?: string }>;
 }) {
   const { expired } = await searchParams;
-  const session = await getServerSession(authOptions);
-  const workspaceId = session!.user.workspaceId;
+  const workspaceId = await requireWorkspaceIdOrRedirect();
 
   const { subscription, active, trialDaysRemaining } = await getWorkspaceAccess(workspaceId);
   const isPaid = subscription?.status === "ACTIVE" || subscription?.status === "TRIALING";
+  // Anyone who has ever checked out has a customer record at the provider,
+  // which is all the portal needs — so a lapsed or canceled workspace can
+  // still get to its invoices.
+  const hasBillingAccount = Boolean(subscription?.providerCustomerId);
 
   return (
     <div className="max-w-lg">
@@ -45,7 +48,10 @@ export default async function BillingPage({
         </p>
       )}
 
-      {!isPaid && <UpgradeButton />}
+      <div className="flex flex-col gap-4">
+        {!isPaid && <UpgradeButton />}
+        {hasBillingAccount && <ManageBillingButton />}
+      </div>
     </div>
   );
 }

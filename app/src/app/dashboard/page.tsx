@@ -1,15 +1,13 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireWorkspaceIdOrRedirect } from "@/lib/currentWorkspace";
 import { getWorkspaceAccess } from "@/lib/access";
 import { PipelineBoard } from "@/components/PipelineBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const session = await getServerSession(authOptions);
-  const workspaceId = session!.user.workspaceId;
+  const workspaceId = await requireWorkspaceIdOrRedirect();
 
   // /dashboard/billing is the one page allowed to render regardless of
   // access — everything else redirects there once the trial's up and

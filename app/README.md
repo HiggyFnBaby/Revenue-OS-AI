@@ -52,7 +52,9 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
 
 - **Real:** auth, multi-tenant data isolation, the pipeline board, stage-change
   automation (auto-created tasks), the Claude API agent runs, the Stripe
-  checkout + webhook flow, the provider-agnostic billing interface.
+  checkout + webhook flow, the Stripe Customer Portal ("Manage billing" on the
+  billing page, for card changes, invoices, and cancellation), a per-workspace
+  quota on agent runs, and the provider-agnostic billing interface.
 - **v1 shortcuts, worth knowing about before this goes to real customers:**
   - Login is email+password only — no "forgot password" flow yet, and no
     Google/OAuth login.
@@ -72,5 +74,8 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
 - `src/lib/automations.ts` — the one classic automation: stage change always
   creates a next-action task.
 - `src/lib/billing/` — the provider-agnostic billing interface + Stripe
-  implementation.
+  implementation (checkout, customer portal, webhook parsing).
+- `src/lib/agentRunLimits.ts` — the per-workspace agent-run quota
+  (`AGENT_RUNS_PER_HOUR` / `AGENT_RUNS_PER_DAY`), counted from the `AgentRun`
+  table so it needs no extra infrastructure.
 - `src/app/dashboard/` — the actual UI (pipeline board, lead detail, billing).
