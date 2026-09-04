@@ -1,17 +1,12 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { authOptions } from "@/lib/auth";
+import { requireWorkspaceIdOrRedirect } from "@/lib/currentWorkspace";
 import { getWorkspaceAccess } from "@/lib/access";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.workspaceId) redirect("/login");
+  const workspaceId = await requireWorkspaceIdOrRedirect();
 
-  const { workspace, active, trialDaysRemaining, subscription } = await getWorkspaceAccess(
-    session.user.workspaceId
-  );
+  const { workspace, active, trialDaysRemaining, subscription } = await getWorkspaceAccess(workspaceId);
   const isPaid = subscription?.status === "ACTIVE" || subscription?.status === "TRIALING";
 
   return (

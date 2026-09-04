@@ -1,5 +1,10 @@
 import Stripe from "stripe";
-import type { BillingProvider, CheckoutSessionParams, NormalizedSubscriptionEvent } from "@/lib/billing/types";
+import type {
+  BillingProvider,
+  CheckoutSessionParams,
+  NormalizedSubscriptionEvent,
+  PortalSessionParams,
+} from "@/lib/billing/types";
 
 function client() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -27,13 +32,21 @@ function mapStripeStatus(status: Stripe.Subscription.Status): NormalizedSubscrip
 export const stripeProvider: BillingProvider = {
   name: "STRIPE",
 
-  async createCheckoutSession({ workspaceId, customerEmail, successUrl, cancelUrl }: CheckoutSessionParams) {
+  async createCheckoutSession({
+    workspaceId,
+    customerEmail,
+    existingCustomerId,
+    successUrl,
+    cancelUrl,
+  }: CheckoutSessionParams) {
     const priceId = process.env.STRIPE_PRICE_ID;
     if (!priceId) throw new Error("STRIPE_PRICE_ID is not set — see .env.example.");
 
     const session = await client().checkout.sessions.create({
       mode: "subscription",
-      customer_email: customerEmail,
+      // Stripe rejects a request that sets both `customer` and
+      // `customer_email`, so it is one or the other.
+      ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: customerEmail }),
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -44,6 +57,20 @@ export const stripeProvider: BillingProvider = {
     });
 
     if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+    return { url: session.url };
+  },
+
+  // Stripe's hosted Customer Portal. In live mode the portal must be
+  // configured once in the Dashboard (Settings > Billing > Customer portal)
+  // or this call fails with "No configuration provided"; test mode ships a
+  // default configuration.
+  async createPortalSession({ providerCustomerId, returnUrl }: PortalSessionParams) {
+    const session = await client().billingPortal.sessions.create({
+      customer: providerCustomerId,
+      return_url: returnUrl,
+    });
+
+    if (!session.url) throw new Error("Stripe did not return a portal URL.");
     return { url: session.url };
   },
 
