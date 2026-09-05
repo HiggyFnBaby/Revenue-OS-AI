@@ -88,13 +88,27 @@ export const stripeProvider: BillingProvider = {
     const workspaceId = subscription.metadata?.workspaceId;
     if (!workspaceId) return null;
 
+    // Stripe moved the billing period off the subscription and onto its
+    // items: a subscription can now have items on different cadences, so
+    // there is no single period for the whole subscription. This app sells
+    // one price per subscription, so the first item's period is the
+    // subscription's — but read the latest across items rather than assuming
+    // exactly one, so a future multi-item plan shows the date access really
+    // runs to instead of whichever item happened to be first.
+    const periodEnds = subscription.items.data
+      .map((item) => item.current_period_end)
+      .filter((value): value is number => typeof value === "number");
+    const currentPeriodEnd = periodEnds.length
+      ? new Date(Math.max(...periodEnds) * 1000)
+      : undefined;
+
     return {
       workspaceId,
       providerCustomerId: subscription.customer as string,
       providerSubscriptionId: subscription.id,
       status: mapStripeStatus(subscription.status),
       priceId: subscription.items.data[0]?.price?.id,
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd,
     };
   },
 };

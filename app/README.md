@@ -67,6 +67,9 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
 
 ## Where things live (if you want to look under the hood)
 
+- `prisma.config.ts` — where the Prisma CLI (`db:push`, `db:migrate`) reads its
+  connection URL since Prisma 7; the running app connects separately through
+  the driver adapter in `src/lib/prisma.ts`.
 - `prisma/schema.prisma` — the data model (Workspace, Lead, AgentRun, Task,
   StageEvent, Subscription).
 - `src/lib/agents.ts` — loads the real agent definitions from
