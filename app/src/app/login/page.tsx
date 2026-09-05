@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
+
+function ResetNotice() {
+  const params = useSearchParams();
+  if (params.get("reset") !== "1") return null;
+  return (
+    <p className="rounded border border-green-300 bg-green-50 p-3 text-sm text-green-800">
+      Your password has been updated. Log in with the new one.
+    </p>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,6 +39,9 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-6">
       <h1 className="text-2xl font-bold">Log in</h1>
+      <Suspense fallback={null}>
+        <ResetNotice />
+      </Suspense>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <input
           type="email"
@@ -54,6 +68,11 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Log in"}
         </button>
       </form>
+      <p className="text-sm text-slate-600">
+        <Link href="/forgot-password" className="underline">
+          Forgot your password?
+        </Link>
+      </p>
       <p className="text-sm text-slate-600">
         No workspace yet?{" "}
         <Link href="/signup" className="underline">
