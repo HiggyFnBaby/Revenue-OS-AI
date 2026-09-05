@@ -86,6 +86,17 @@ export default function SignupPage() {
         >
           {loading ? "Creating..." : "Create workspace"}
         </button>
+        <p className="text-xs text-slate-500">
+          By creating a workspace you agree to the{" "}
+          <Link href="/terms" className="underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
       <p className="text-sm text-slate-600">
         Already have a workspace?{" "}

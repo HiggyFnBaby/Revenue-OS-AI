@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { TRIAL_DAYS } from "@/lib/access";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const PRICE_LABEL = process.env.NEXT_PUBLIC_PRICE_LABEL ?? "$49/month";
 
@@ -85,6 +86,8 @@ export default async function HomePage() {
           Start your {TRIAL_DAYS}-day free trial
         </Link>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }

@@ -73,6 +73,15 @@ export default function LoginPage() {
           Forgot your password?
         </Link>
       </p>
+      <p className="text-xs text-slate-500">
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{" "}
+        &middot;{" "}
+        <Link href="/privacy" className="underline">
+          Privacy
+        </Link>
+      </p>
       <p className="text-sm text-slate-600">
         No workspace yet?{" "}
         <Link href="/signup" className="underline">
