@@ -16,6 +16,12 @@ import { runAgentForLead } from "@/lib/anthropic";
 // route with a per-workspace quota (see lib/agentRunLimits.ts), because a
 // trial needs no card and this is the only thing in the app that spends
 // money per call.
+// An agent run is one long model call. Vercel's default function limit is
+// 10 seconds, which a real report never fits in. 60 is the most every plan
+// accepts; on Pro (or Hobby with Fluid compute) it can go to 300 if runs
+// start hitting the cap.
+export const maxDuration = 60;
+
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await requireActiveWorkspaceId();
   if ("errorResponse" in access) return access.errorResponse;
