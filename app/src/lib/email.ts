@@ -18,14 +18,31 @@ export function emailIsConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
 
+// Throws exactly when sendEmail() would throw for want of configuration, and
+// is the single place that decision is made.
+//
+// Call this before doing work that outlives a failed send. The password reset
+// flow mints a token and, in the same transaction, retires the user's earlier
+// live ones. Discovering only at the send that email was never configured left
+// both behind: a token row nobody could ever receive, and — worse — a
+// previously working reset link retired in favour of one that never arrived,
+// so the user could end up with no usable link at all.
+export function assertEmailCanSend(): void {
+  if (emailIsConfigured()) return;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Email is not configured: set RESEND_API_KEY and EMAIL_FROM — see .env.example.");
+  }
+  // Development with no provider: sendEmail prints the message instead, so
+  // the flow stays exercisable end to end.
+}
+
 export async function sendEmail(message: EmailMessage): Promise<void> {
+  assertEmailCanSend();
+
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
 
   if (!apiKey || !from) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Email is not configured: set RESEND_API_KEY and EMAIL_FROM — see .env.example.");
-    }
     console.log(`[email] (not configured — printing instead)\nTo: ${message.to}\nSubject: ${message.subject}\n\n${message.text}\n`);
     return;
   }
