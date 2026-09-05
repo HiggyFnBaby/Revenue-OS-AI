@@ -56,8 +56,8 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
   billing page, for card changes, invoices, and cancellation), a per-workspace
   quota on agent runs, and the provider-agnostic billing interface.
 - **v1 shortcuts, worth knowing about before this goes to real customers:**
-  - Login is email+password only — no "forgot password" flow yet, and no
-    Google/OAuth login.
+  - Login is email+password only — no Google/OAuth login. "Forgot password"
+    works (emailed one-hour link via Resend; see `.env.example`).
   - No team invites yet — one user per workspace (the person who signed up).
   - The pipeline board uses a dropdown to change stage, not drag-and-drop —
     functionally equivalent, just less polished.
@@ -73,6 +73,9 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
   `../.claude/agents/*.md` as Claude API system prompts.
 - `src/lib/automations.ts` — the one classic automation: stage change always
   creates a next-action task.
+- `src/lib/passwordReset.ts` + `src/lib/email.ts` — the forgot/reset password
+  flow: hashed single-use tokens in `PasswordResetToken`, links emailed
+  through Resend.
 - `src/lib/billing/` — the provider-agnostic billing interface + Stripe
   implementation (checkout, customer portal, webhook parsing).
 - `src/lib/agentRunLimits.ts` — the per-workspace agent-run quota
