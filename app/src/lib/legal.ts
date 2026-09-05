@@ -12,6 +12,18 @@ export const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME || "Revenue OS"
 
 export const PRODUCT_NAME = "Revenue OS";
 
+// Sender domains that belong to the email provider rather than to us.
+// Resend hands every new account onboarding@resend.dev so the flow can be
+// tested before a real domain is verified — useful for EMAIL_FROM, but it
+// reaches Resend, not us, so it must never be published as our legal
+// contact. Skipped below in favour of the next fallback.
+const SHARED_SENDER_DOMAINS = ["resend.dev"];
+
+function isOurs(address: string): boolean {
+  const domain = address.split("@")[1]?.toLowerCase() ?? "";
+  return !SHARED_SENDER_DOMAINS.some((shared) => domain === shared || domain.endsWith(`.${shared}`));
+}
+
 // Where privacy requests and legal notices go. Falls back to the address
 // transactional email is sent from (EMAIL_FROM), then to support@ on the
 // app's own domain, so the pages never render an empty contact.
@@ -21,8 +33,8 @@ function contactEmail(): string {
 
   const from = process.env.EMAIL_FROM ?? "";
   const angled = from.match(/<([^>]+)>/);
-  if (angled) return angled[1];
-  if (from.includes("@")) return from.trim();
+  const fromAddress = angled ? angled[1].trim() : from.includes("@") ? from.trim() : "";
+  if (fromAddress && isOurs(fromAddress)) return fromAddress;
 
   try {
     const host = new URL(process.env.NEXTAUTH_URL ?? "").hostname;
