@@ -10,19 +10,16 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Pooled connection (Supabase transaction pooler, port 6543). Serverless
-  // functions open a connection per invocation, so the app must not talk to
-  // Postgres directly or it exhausts the connection limit under load.
+  // Prisma 7 no longer accepts `url`/`directUrl` here. The running app gets
+  // its connection from the driver adapter in src/lib/prisma.ts (DATABASE_URL,
+  // the pooled endpoint); the CLI gets its own from prisma.config.ts
+  // (DIRECT_URL, unpooled, because migrations need a real session).
   //
   // Deliberately NOT the Supabase-Vercel integration's POSTGRES_PRISMA_URL:
   // that variable is owned by the integration and points at whichever project
   // the integration happens to be linked to, which is not necessarily this
-  // app's database. Reading a variable we set ourselves keeps the target
+  // app's database. Reading variables we set ourselves keeps the target
   // explicit and stops an integration relink from silently repointing the app.
-  url       = env("DATABASE_URL")
-  // Unpooled connection (port 5432). Migrations need a real session — they
-  // use advisory locks and DDL that a transaction pooler cannot carry.
-  directUrl = env("DIRECT_URL")
 }
 
 enum PipelineStage {
