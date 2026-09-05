@@ -76,6 +76,12 @@ Then visit `http://localhost:3000`, click "Create workspace," and you're in.
 - `src/lib/passwordReset.ts` + `src/lib/email.ts` — the forgot/reset password
   flow: hashed single-use tokens in `PasswordResetToken`, links emailed
   through Resend.
+- `src/app/terms/` and `src/app/privacy/` — the Terms of Service and Privacy
+  Policy, linked from the landing page footer, login, and signup. Operator
+  facts (company name, contact email, governing law) come from
+  `src/lib/legal.ts`, which reads the `NEXT_PUBLIC_*` variables in
+  `.env.example`. The subprocessor list there must match what the code
+  actually calls.
 - `src/lib/billing/` — the provider-agnostic billing interface + Stripe
   implementation (checkout, customer portal, webhook parsing).
 - `src/lib/agentRunLimits.ts` — the per-workspace agent-run quota
