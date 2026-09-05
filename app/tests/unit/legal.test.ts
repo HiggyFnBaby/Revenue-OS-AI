@@ -46,6 +46,29 @@ describe("LEGAL_CONTACT_EMAIL", () => {
     expect((await legal()).LEGAL_CONTACT_EMAIL).toBe("support@example.com");
   });
 
+  it("skips Resend's shared test sender in favour of the app's own domain", async () => {
+    vi.stubEnv("EMAIL_FROM", "Revenue OS <onboarding@resend.dev>");
+    vi.stubEnv("NEXTAUTH_URL", "https://app.company.com");
+    expect((await legal()).LEGAL_CONTACT_EMAIL).toBe("support@app.company.com");
+  });
+
+  it("skips a bare shared-sender address too", async () => {
+    vi.stubEnv("EMAIL_FROM", "onboarding@resend.dev");
+    vi.stubEnv("NEXTAUTH_URL", "https://app.company.com");
+    expect((await legal()).LEGAL_CONTACT_EMAIL).toBe("support@app.company.com");
+  });
+
+  it("still honours an explicit contact even on a shared sender domain", async () => {
+    vi.stubEnv("NEXT_PUBLIC_LEGAL_CONTACT_EMAIL", "legal@company.com");
+    vi.stubEnv("EMAIL_FROM", "Revenue OS <onboarding@resend.dev>");
+    expect((await legal()).LEGAL_CONTACT_EMAIL).toBe("legal@company.com");
+  });
+
+  it("does not mistake a domain that merely ends in the same letters", async () => {
+    vi.stubEnv("EMAIL_FROM", "no-reply@notresend.dev");
+    expect((await legal()).LEGAL_CONTACT_EMAIL).toBe("no-reply@notresend.dev");
+  });
+
   it("never renders an empty contact", async () => {
     expect((await legal()).LEGAL_CONTACT_EMAIL).toMatch(/@/);
   });
