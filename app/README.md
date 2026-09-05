@@ -48,6 +48,41 @@ npm run dev          # starts the app at http://localhost:3000
 
 Then visit `http://localhost:3000`, click "Create workspace," and you're in.
 
+## Tests
+
+```bash
+npm test              # everything
+npm run test:unit     # no database needed
+npm run test:integration
+npm run test:watch
+```
+
+`tests/unit/` needs nothing but the repo. `tests/integration/` runs against a
+real PostgreSQL and is **skipped** when `DATABASE_URL` is unset, so `npm test`
+still works on a fresh clone. CI always provides one (a `postgres:16` service),
+so everything runs on every pull request.
+
+To run the integration tests locally, point `DATABASE_URL` and `DIRECT_URL` at
+any throwaway Postgres, run `npm run db:push` once, then `npm test`.
+
+What they cover, and why those pieces:
+
+- **Multi-tenant isolation** — that one workspace cannot read another's leads,
+  even by exact id. The one bug here that would leak customer data.
+- **Access gating** (`hasActiveAccess`) — every branch of trial-vs-subscription.
+  Wrong either way means giving the product away or locking out a payer.
+- **Stripe webhook parsing** — against payloads signed with Stripe's own
+  helper. Pins that the renewal date is read from the subscription *item*,
+  which is where Stripe v22 moved it; reading the old place silently wrote an
+  invalid date for every subscriber.
+- **Password reset** — the whole lifecycle: single use, expiry, superseding an
+  older link, the per-address cap, and that a request which cannot send email
+  writes nothing and leaves an existing link working.
+- **Stage-change automation** — that the lead, the audit event and the
+  next-action task are written together.
+- **Agent run quota** — the caps that stand between one script and the month's
+  model budget, including that they count per workspace.
+
 ## What's real vs. what's a v1 shortcut
 
 - **Real:** auth, multi-tenant data isolation, the pipeline board, stage-change
