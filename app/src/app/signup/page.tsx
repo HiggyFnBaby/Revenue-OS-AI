@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { MIN_PASSWORD_LENGTH } from "@/lib/passwords";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function SignupPage() {
           type="password"
           placeholder="Password"
           required
-          minLength={8}
+          minLength={MIN_PASSWORD_LENGTH}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="rounded border border-slate-300 px-3 py-2"
@@ -85,6 +86,17 @@ export default function SignupPage() {
         >
           {loading ? "Creating..." : "Create workspace"}
         </button>
+        <p className="text-xs text-slate-500">
+          By creating a workspace you agree to the{" "}
+          <Link href="/terms" className="underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
       <p className="text-sm text-slate-600">
         Already have a workspace?{" "}

@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireWorkspaceIdOrRedirect } from "@/lib/currentWorkspace";
 import { getWorkspaceAccess } from "@/lib/access";
 import { UpgradeButton } from "@/components/UpgradeButton";
+import { ManageBillingButton } from "@/components/ManageBillingButton";
 
 export const dynamic = "force-dynamic";
 
@@ -10,19 +10,23 @@ export const dynamic = "force-dynamic";
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: { expired?: string };
+  searchParams: Promise<{ expired?: string }>;
 }) {
-  const session = await getServerSession(authOptions);
-  const workspaceId = session!.user.workspaceId;
+  const { expired } = await searchParams;
+  const workspaceId = await requireWorkspaceIdOrRedirect();
 
   const { subscription, active, trialDaysRemaining } = await getWorkspaceAccess(workspaceId);
   const isPaid = subscription?.status === "ACTIVE" || subscription?.status === "TRIALING";
+  // Anyone who has ever checked out has a customer record at the provider,
+  // which is all the portal needs — so a lapsed or canceled workspace can
+  // still get to its invoices.
+  const hasBillingAccount = Boolean(subscription?.providerCustomerId);
 
   return (
     <div className="max-w-lg">
       <h1 className="mb-4 text-xl font-bold">Billing</h1>
 
-      {searchParams.expired && !active && (
+      {expired && !active && (
         <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
           Your trial has ended, so the rest of the app is locked until you upgrade.
         </div>
@@ -30,7 +34,7 @@ export default async function BillingPage({
 
       {!isPaid && active && (
         <p className="mb-4 text-sm text-slate-600">
-          You're on the free trial — <span className="font-semibold">{trialDaysRemaining} day{trialDaysRemaining === 1 ? "" : "s"} left</span>.
+          You&apos;re on the free trial — <span className="font-semibold">{trialDaysRemaining} day{trialDaysRemaining === 1 ? "" : "s"} left</span>.
           No credit card is needed until you decide to upgrade.
         </p>
       )}
@@ -44,7 +48,10 @@ export default async function BillingPage({
         </p>
       )}
 
-      {!isPaid && <UpgradeButton />}
+      <div className="flex flex-col gap-4">
+        {!isPaid && <UpgradeButton />}
+        {hasBillingAccount && <ManageBillingButton />}
+      </div>
     </div>
   );
 }

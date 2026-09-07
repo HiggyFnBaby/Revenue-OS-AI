@@ -4,12 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { requireWorkspaceId, requireActiveWorkspaceId } from "@/lib/currentWorkspace";
 import { changeLeadStage } from "@/lib/automations";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workspaceId = await requireWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { id } = await params;
+
   const lead = await prisma.lead.findFirst({
-    where: { id: params.id, workspaceId },
+    where: { id, workspaceId },
     include: {
       agentRuns: { orderBy: { createdAt: "asc" } },
       tasks: { orderBy: { createdAt: "desc" } },
@@ -21,12 +23,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   return NextResponse.json(lead);
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await requireActiveWorkspaceId();
   if ("errorResponse" in access) return access.errorResponse;
   const { workspaceId } = access;
 
-  const lead = await prisma.lead.findFirst({ where: { id: params.id, workspaceId } });
+  const { id } = await params;
+  const lead = await prisma.lead.findFirst({ where: { id, workspaceId } });
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await request.json();

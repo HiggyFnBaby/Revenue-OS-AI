@@ -2,7 +2,25 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AgentRun, Lead } from "@prisma/client";
 import { loadAgentDefinition, AGENT_FOR_STAGE } from "@/lib/agents";
 
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+// Model defaults. ANTHROPIC_MODEL overrides, but must name a current model
+// (Claude 4.6 or later): this code sends adaptive thinking and the
+// server-side fallback chain, which older models reject with a 400.
+const DEFAULT_MODEL = "claude-opus-5";
+const MODEL = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
+
+// Room for a full report. Streaming (below) keeps a long generation from
+// tripping the SDK's HTTP timeout; the route's maxDuration is the real cap.
+const MAX_TOKENS = 16000;
+
+// Optional cost/latency dial. Unset means the API default (high). "medium"
+// is the usual step down that still holds quality on these models; "low"
+// is for quick passes.
+const EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+type Effort = (typeof EFFORT_LEVELS)[number];
+function effortFromEnv(): Effort | undefined {
+  const raw = process.env.ANTHROPIC_EFFORT;
+  return (EFFORT_LEVELS as readonly string[]).includes(raw ?? "") ? (raw as Effort) : undefined;
+}
 
 function client() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -45,18 +63,40 @@ export async function runAgentForLead(lead: Lead, priorRuns: AgentRun[]) {
 
   const definition = loadAgentDefinition(agentName);
   const userMessage = buildUserMessage(lead, priorRuns);
+  const effort = effortFromEnv();
 
-  const response = await client().messages.create({
+  const stream = client().beta.messages.stream({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: MAX_TOKENS,
     system: definition.systemPrompt,
     messages: [{ role: "user", content: userMessage }],
+    // Adaptive thinking: the model decides how much to reason per request.
+    thinking: { type: "adaptive" },
+    ...(effort ? { output_config: { effort } } : {}),
+    // If the model's safety classifiers decline the request, the API re-runs
+    // it on the model's server-defined fallback inside the same call instead
+    // of returning nothing. `response.model` reports whichever model answered.
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
   });
 
-  const output = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+  const response = await stream.finalMessage();
+
+  if (response.stop_reason === "refusal") {
+    const why = response.stop_details?.type === "refusal" ? response.stop_details.explanation : undefined;
+    throw new Error(
+      `The model declined to run this agent${why ? `: ${why}` : "."} Review the lead's notes and try again.`
+    );
+  }
+
+  let output = response.content
+    .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("\n");
 
-  return { agent: agentName, input: userMessage, output, model: MODEL };
+  if (response.stop_reason === "max_tokens") {
+    output += "\n\n[Output was cut off at the length limit. Run the agent again to continue from here.]";
+  }
+
+  return { agent: agentName, input: userMessage, output, model: response.model };
 }

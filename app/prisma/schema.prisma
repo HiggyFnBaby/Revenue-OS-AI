@@ -10,7 +10,16 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Prisma 7 no longer accepts `url`/`directUrl` here. The running app gets
+  // its connection from the driver adapter in src/lib/prisma.ts (DATABASE_URL,
+  // the pooled endpoint); the CLI gets its own from prisma.config.ts
+  // (DIRECT_URL, unpooled, because migrations need a real session).
+  //
+  // Deliberately NOT the Supabase-Vercel integration's POSTGRES_PRISMA_URL:
+  // that variable is owned by the integration and points at whichever project
+  // the integration happens to be linked to, which is not necessarily this
+  // app's database. Reading variables we set ourselves keeps the target
+  // explicit and stops an integration relink from silently repointing the app.
 }
 
 enum PipelineStage {
@@ -58,12 +67,30 @@ model Workspace {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  memberships  Membership[]
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String?
+  passwordHash        String
+  createdAt           DateTime             @default(now())
+  memberships         Membership[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+// One row per "forgot password" request. Only the SHA-256 of the token is
+// stored: the raw token lives solely in the emailed link, so a read of this
+// table (a leaked backup, a stray SELECT) cannot be turned into a login. A
+// token is single-use (usedAt) and short-lived (expiresAt) — see
+// src/lib/passwordReset.ts, the one place tokens are minted and checked.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // A Membership is what grants a User access to a Workspace's data.

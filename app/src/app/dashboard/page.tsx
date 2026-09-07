@@ -1,15 +1,13 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireWorkspaceIdOrRedirect } from "@/lib/currentWorkspace";
 import { getWorkspaceAccess } from "@/lib/access";
 import { PipelineBoard } from "@/components/PipelineBoard";
 
 export const dynamic = "force-dynamic";
 
 export default async function PipelinePage() {
-  const session = await getServerSession(authOptions);
-  const workspaceId = session!.user.workspaceId;
+  const workspaceId = await requireWorkspaceIdOrRedirect();
 
   // /dashboard/billing is the one page allowed to render regardless of
   // access — everything else redirects there once the trial's up and
@@ -27,7 +25,7 @@ export default async function PipelinePage() {
       <h1 className="mb-1 text-xl font-bold">Pipeline</h1>
       <p className="mb-6 text-sm text-slate-600">
         Every lead moves left to right: Signal &rarr; Offer &rarr; Angle &rarr; Conversation &rarr; Won/Lost.
-        Moving a lead's stage automatically logs the change and creates the next action as a task.
+        Moving a lead&apos;s stage automatically logs the change and creates the next action as a task.
       </p>
       <PipelineBoard initialLeads={leads} />
     </div>

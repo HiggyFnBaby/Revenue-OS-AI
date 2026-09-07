@@ -1,0 +1,29 @@
+{
+  "tools": [
+    "create_migration_case",
+    "record_dependency",
+    "calculate_decision_score",
+    "create_staging_schema",
+    "import_staging_batch",
+    "run_validation",
+    "record_approval",
+    "open_support_case",
+    "get_case_status",
+    "generate_cutover_runbook",
+    "generate_rollback_runbook"
+  ],
+  "blocked_without_approval": [
+    "import_to_production",
+    "change_permissions",
+    "activate_cutover",
+    "delete_source_data",
+    "retire_airtable"
+  ],
+  "mutation_tool_required_fields": [
+    "tenant_id",
+    "actor_id",
+    "idempotency_key",
+    "reason",
+    "approval_id (when applicable)"
+  ]
+}

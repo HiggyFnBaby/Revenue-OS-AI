@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getWorkspaceAccess } from "@/lib/access";
@@ -10,6 +11,18 @@ import { getWorkspaceAccess } from "@/lib/access";
 export async function requireWorkspaceId(): Promise<string | null> {
   const session = await getServerSession(authOptions);
   return session?.user?.workspaceId ?? null;
+}
+
+// Server-component counterpart for pages under /dashboard. The layout also
+// redirects, but Next renders a layout and its page in parallel, so a page
+// cannot rely on the layout having sent the visitor to /login first — a
+// logged-out request would reach `session.user` on a null session and throw
+// before the layout's redirect took effect. Calling this at the top of every
+// dashboard page makes each page safe on its own.
+export async function requireWorkspaceIdOrRedirect(): Promise<string> {
+  const workspaceId = await requireWorkspaceId();
+  if (!workspaceId) redirect("/login");
+  return workspaceId;
 }
 
 // Stronger version for routes that cost money to call (agent runs) or

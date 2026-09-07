@@ -1,5 +1,10 @@
 import Stripe from "stripe";
-import type { BillingProvider, CheckoutSessionParams, NormalizedSubscriptionEvent } from "@/lib/billing/types";
+import type {
+  BillingProvider,
+  CheckoutSessionParams,
+  NormalizedSubscriptionEvent,
+  PortalSessionParams,
+} from "@/lib/billing/types";
 
 function client() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -27,13 +32,21 @@ function mapStripeStatus(status: Stripe.Subscription.Status): NormalizedSubscrip
 export const stripeProvider: BillingProvider = {
   name: "STRIPE",
 
-  async createCheckoutSession({ workspaceId, customerEmail, successUrl, cancelUrl }: CheckoutSessionParams) {
+  async createCheckoutSession({
+    workspaceId,
+    customerEmail,
+    existingCustomerId,
+    successUrl,
+    cancelUrl,
+  }: CheckoutSessionParams) {
     const priceId = process.env.STRIPE_PRICE_ID;
     if (!priceId) throw new Error("STRIPE_PRICE_ID is not set — see .env.example.");
 
     const session = await client().checkout.sessions.create({
       mode: "subscription",
-      customer_email: customerEmail,
+      // Stripe rejects a request that sets both `customer` and
+      // `customer_email`, so it is one or the other.
+      ...(existingCustomerId ? { customer: existingCustomerId } : { customer_email: customerEmail }),
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -44,6 +57,20 @@ export const stripeProvider: BillingProvider = {
     });
 
     if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+    return { url: session.url };
+  },
+
+  // Stripe's hosted Customer Portal. In live mode the portal must be
+  // configured once in the Dashboard (Settings > Billing > Customer portal)
+  // or this call fails with "No configuration provided"; test mode ships a
+  // default configuration.
+  async createPortalSession({ providerCustomerId, returnUrl }: PortalSessionParams) {
+    const session = await client().billingPortal.sessions.create({
+      customer: providerCustomerId,
+      return_url: returnUrl,
+    });
+
+    if (!session.url) throw new Error("Stripe did not return a portal URL.");
     return { url: session.url };
   },
 
@@ -61,13 +88,27 @@ export const stripeProvider: BillingProvider = {
     const workspaceId = subscription.metadata?.workspaceId;
     if (!workspaceId) return null;
 
+    // Stripe moved the billing period off the subscription and onto its
+    // items: a subscription can now have items on different cadences, so
+    // there is no single period for the whole subscription. This app sells
+    // one price per subscription, so the first item's period is the
+    // subscription's — but read the latest across items rather than assuming
+    // exactly one, so a future multi-item plan shows the date access really
+    // runs to instead of whichever item happened to be first.
+    const periodEnds = subscription.items.data
+      .map((item) => item.current_period_end)
+      .filter((value): value is number => typeof value === "number");
+    const currentPeriodEnd = periodEnds.length
+      ? new Date(Math.max(...periodEnds) * 1000)
+      : undefined;
+
     return {
       workspaceId,
       providerCustomerId: subscription.customer as string,
       providerSubscriptionId: subscription.id,
       status: mapStripeStatus(subscription.status),
       priceId: subscription.items.data[0]?.price?.id,
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd,
     };
   },
 };
