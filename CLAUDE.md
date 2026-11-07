@@ -116,8 +116,41 @@ these (this repo's concrete application of the Human Authority rule in
 - Which content angle he's willing to put his name behind.
 - Which conversation branches he'll personally handle vs. automate.
 
-Current pilot niche across all four output directories: **real estate
-agents**, offer name **"FirstReply."**
+Two niches have been run through all four output directories here: **real
+estate agents** (offer name **"FirstReply"**) and **personal finance
+trackers**. Note: the actual FirstReply *product* (the Next.js app real
+customers use) was built out separately, in the `HiggyFnBaby/Higgyd-Productions`
+repo's `first-reply/` — not in this repo. This repo holds the signal →
+offer → angle → conversation research artifacts that justified building
+it, not the shipped app itself.
+
+### Relationship to `HiggyFnBaby/Higgyd-Productions` (read this before assuming either repo is "the" source of truth)
+
+This repo is the *original* Revenue OS AI project. At some point its
+real-estate-agents research and the four-agent `.claude/agents/` setup were
+ported into `Higgyd-Productions` as its `revenue-os/` folder, where the
+CRM was then actually built out and a second pilot niche (**insurance/
+financial agents** — different from this repo's second niche, personal
+finance trackers) was researched. Since that port, the two repos have
+**diverged in both directions** — neither is simply an outdated copy of
+the other:
+
+- **Higgyd-Productions/revenue-os/ is ahead on:** the live FirstReply
+  product, Stripe billing/trial-paywall enforcement verified in
+  production, the insurance/financial-agents niche research, deploy
+  fixes, and an uptime/keep-alive cron job.
+- **This repo is ahead on:** a password-reset flow (`forgot-password`/
+  `reset-password` pages) and an entire extra agent and system,
+  **ContinuityBridge AI** (`.claude/agents/continuity-bridge-ai.md` +
+  `continuity-bridge/` + `migration-cases/`), for migrating clients off
+  Airtable — none of this exists in Higgyd-Productions. (Higgyd-Productions
+  does have its own, separately-built Airtable migration tooling at
+  `db/airtable-migration/`, but it is not the same system as ContinuityBridge
+  AI — don't assume they're interchangeable.)
+
+Don't silently port code between these two repos or assume one supersedes
+the other without checking current state in both — confirm with Derrick
+which direction a given change should go.
 
 ### The `app/` CRM
 
